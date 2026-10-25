@@ -184,13 +184,13 @@ Get a key at [Google AI Studio](https://aistudio.google.com/apikey). You can als
 
 | Setting | Where | Default |
 |---|---|---|
-| Reasoning and grounding model | Sidebar → Advanced | `gemini-3.5-flash-lite` (best available is picked automatically) |
-| Image model | Sidebar → Advanced | `gemini-3.1-flash-image` |
+| Reasoning and grounding model | Sidebar → Advanced | Newest stable `gemini-X.Y-flash-lite` (currently `gemini-3.5-flash-lite`) |
+| Image model | Sidebar → Advanced | Newest stable `gemini-X.Y-flash-image` (currently `gemini-3.1-flash-image`) |
 | Max products per URL | Sidebar → Advanced | 20 |
 | Combinations proposed | Sidebar → Advanced | 4 |
 | Room type and surface names | Sidebar | Kitchen: lower / upper / accent |
 
-The model pickers list only the models your key can call (fetched with `client.models.list()`), and pick the best available default. If listing fails, they become free-text fields.
+The model pickers list only the models your key can call (fetched with `client.models.list()`). The default is the **newest stable** model in each family: the highest `gemini-X.Y-flash-lite` for text and the highest `gemini-X.Y-flash-image` for images. Preview, experimental and dated variants are skipped, so new releases are picked up without a code change. If no such model is listed, a curated preference list is used. If listing fails, the pickers become free-text fields.
 
 ## Project structure
 

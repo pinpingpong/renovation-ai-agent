@@ -198,10 +198,10 @@ def cached_models(key_fingerprint: str, _api_key: str) -> Tuple[List[str], List[
     return agent.list_generation_models(agent.make_client(_api_key))
 
 
-def _model_picker(label: str, available: List[str], preferred, fallback: str, help_text: str) -> str:
+def _model_picker(label: str, available: List[str], preferred, fallback: str, help_text: str, family: str) -> str:
     if not available:
         return st.text_input(label, fallback, help=help_text)
-    default = agent.pick_default_model(available, preferred) or available[0]
+    default = agent.pick_default_model(available, preferred, family) or available[0]
     return st.selectbox(label, available, index=available.index(default), help=help_text)
 
 
@@ -299,11 +299,13 @@ with st.sidebar:
     with st.expander("Advanced model settings"):
         text_model = _model_picker(
             "Reasoning / grounding model", text_models, agent.PREFERRED_TEXT_MODELS,
-            agent.DEFAULT_TEXT_MODEL, "Used for search-grounded catalogue lookup, evaluation and pairing.",
+            agent.DEFAULT_TEXT_MODEL, "Used for search-grounded catalogue lookup, evaluation and pairing. "
+            "Defaults to the newest stable Flash-Lite model your key can use.", "text",
         )
         image_model = _model_picker(
             "Image model", image_models, renderer.PREFERRED_IMAGE_MODELS,
-            renderer.DEFAULT_IMAGE_MODEL, "Used for multimodal inpainting of your room photo.",
+            renderer.DEFAULT_IMAGE_MODEL, "Used for multimodal inpainting of your room photo. "
+            "Defaults to the newest stable Flash Image model your key can use.", "image",
         )
         if api_key and text_models:
             st.caption(f"Showing {len(text_models)} text and {len(image_models)} image models available to your key.")

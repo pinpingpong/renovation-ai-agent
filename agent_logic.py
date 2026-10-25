@@ -215,8 +215,35 @@ def check_model_access(
     return results
 
 
-def pick_default_model(available: List[str], preferred: Iterable[str]) -> Optional[str]:
-    """First preferred model that is available, else the first non-lite flash, else the first."""
+# Stable model families, matched exactly so preview / exp / dated variants are never picked.
+_STABLE_FAMILIES = {
+    "text": re.compile(r"^gemini-(\d+(?:\.\d+)*)-flash-lite$"),
+    "image": re.compile(r"^gemini-(\d+(?:\.\d+)*)-flash-image$"),
+}
+
+
+def newest_stable_model(available: Iterable[str], family: str) -> Optional[str]:
+    """Highest-versioned stable model of a family, e.g. gemini-4-flash-lite over gemini-3.5-flash-lite."""
+    pattern = _STABLE_FAMILIES[family]
+    best: Optional[Tuple[Tuple[int, ...], str]] = None
+    for name in available:
+        m = pattern.match(name)
+        if m:
+            version = tuple(int(part) for part in m.group(1).split("."))
+            if best is None or version > best[0]:
+                best = (version, name)
+    return best[1] if best else None
+
+
+def pick_default_model(
+    available: List[str], preferred: Iterable[str], family: Optional[str] = None
+) -> Optional[str]:
+    """Newest stable model of ``family`` if one is available, else the first preferred model,
+    else the first non-lite flash, else the first model listed."""
+    if family:
+        newest = newest_stable_model(available, family)
+        if newest:
+            return newest
     for name in preferred:
         if name in available:
             return name
