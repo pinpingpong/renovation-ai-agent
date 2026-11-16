@@ -710,13 +710,19 @@ def _grounding_sources(response) -> List[Dict[str, str]]:
 
 
 def _grounded_call(client: genai.Client, model: str, prompt: str):
-    """Run a grounded call with URL Context + Search, degrading to Search only."""
-    tool_sets = [
-        [types.Tool(url_context=types.UrlContext()), types.Tool(google_search=types.GoogleSearch())],
-        [types.Tool(google_search=types.GoogleSearch())],
-    ]
+    """Run a grounded call with URL Context + Search, degrading to Search only (400: URL Context
+    unsupported) or to URL Context only (429: the key's Google Search grounding quota is used up,
+    which free-tier keys hit while plain and URL Context calls still work)."""
+    url_ctx = types.Tool(url_context=types.UrlContext())
+    search = types.Tool(google_search=types.GoogleSearch())
+    tool_sets = [[url_ctx, search], [search], [url_ctx]]
     last_exc: Optional[Exception] = None
-    for tools in tool_sets:
+    for i, tools in enumerate(tool_sets):
+        quota_hit = last_exc is not None and getattr(last_exc, "code", None) == 429
+        if i == 1 and quota_hit:
+            continue  # Search-only would hit the same exhausted quota
+        if i == 2 and not quota_hit:
+            break  # URL-Context-only is a quota fallback, not a general retry
         try:
             return client.models.generate_content(
                 model=model,
@@ -729,8 +735,13 @@ def _grounded_call(client: genai.Client, model: str, prompt: str):
             )
         except genai_errors.APIError as exc:
             # Some models / regions don't support url_context — retry with search only.
-            if getattr(exc, "code", None) == 400 and len(tools) > 1:
+            code = getattr(exc, "code", None)
+            if code == 400 and i == 0:
                 logger.warning("URL context unavailable, retrying with search only: %s", exc)
+                last_exc = exc
+                continue
+            if code == 429 and i < 2:
+                logger.warning("Search grounding quota exhausted, retrying with URL context only: %s", exc)
                 last_exc = exc
                 continue
             raise
